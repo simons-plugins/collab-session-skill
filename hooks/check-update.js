@@ -41,7 +41,7 @@ function refreshCacheInBackground(installed) {
   const child = spawn(process.execPath, ['-e', `
     const fs = require('fs');
     const https = require('https');
-    const url = 'https://raw.githubusercontent.com/${REPO}/master/.claude-plugin/plugin.json';
+    const url = 'https://raw.githubusercontent.com/${REPO}/main/.claude-plugin/plugin.json';
     const req = https.get(url, { headers: { 'User-Agent': 'collab-session-update-check' } }, (res) => {
       let data = '';
       res.on('data', c => data += c);
