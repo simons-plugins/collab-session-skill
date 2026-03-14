@@ -1,15 +1,12 @@
 ---
 name: collab-session
 description: >
-  Async collaborative brainstorming between multiple human+Claude pairs, organised into shared
-  workspaces containing discrete sessions per topic. Each participant writes only their own
-  timestamped files — no merge conflicts, ever. Shared via a network/cloud drive or a dedicated
-  mini git repo that auto-pushes to main on every save. Use this skill whenever a user mentions
-  sharing a Claude conversation with a colleague, handing off a brainstorm, continuing someone
-  else's Claude thread, or anything like "let my colleague pick this up", "start a collab on X",
-  "what sessions are active", or "join Dan's thread". Trigger on: /collab whoami, /collab init,
-  /collab new, /collab list, /collab join, /collab save, /collab refresh, /collab close.
-  This is a Claude Code skill.
+  This skill should be used when the user asks to "start a collab", "share this with a colleague",
+  "hand off this brainstorm", "continue someone else's thread", "let my colleague pick this up",
+  "what sessions are active", "join Dan's thread", "set up a shared workspace", or invokes any
+  /collab command (whoami, init, new, list, join, save, refresh, close). Enables async collaborative
+  brainstorming between multiple human+Claude pairs via shared workspaces with write-once block
+  files — no merge conflicts by design. Supports network drive and mini git repo transports.
 ---
 
 # Collab Session Skill
