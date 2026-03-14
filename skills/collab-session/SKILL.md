@@ -445,8 +445,8 @@ No rebasing. Just: pull → write → commit → push. Colleagues pull to receiv
 history is a perfect audit log of who saved what and when.
 
 **`_meta.json` is the only shared mutable file.** Low collision risk in practice — it's
-small and structured. On mini-repo, the pull-before-save step means conflicts are rare;
-if they occur on the metadata fields (not block content), `git mergetool` resolves trivially.
+small and structured. If a push fails because a colleague pushed since our last pull,
+a quick pull-then-retry resolves it. Block files never conflict — only metadata can.
 
 **Save fast, compress later.** Saves dump raw conversation turns with no summarisation —
 speed and losslessness over polish. Compression is a separate deliberate step via
