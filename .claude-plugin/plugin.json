@@ -1,6 +1,6 @@
 {
   "name": "collab-session",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Async collaborative brainstorming between multiple human+Claude pairs — shared workspaces with write-once block files, no merge conflicts",
   "repository": "https://github.com/simons-plugins/collab-session-skill"
 }

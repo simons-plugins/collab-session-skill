@@ -27,6 +27,10 @@ Two transport options — chosen once at `/collab init`:
 Read `references/schemas.md` for exact file formats before any read/write operation.
 Read `references/git-ops.md` for the exact git commands used in mini-repo mode.
 
+**Timestamps:** Always get the current time by running `date -u` via Bash. Never guess,
+estimate, or invent timestamps. Claude has no internal clock — any timestamp not sourced
+from the system clock is a hallucination and will be wrong.
+
 ---
 
 ## Folder Structure
@@ -143,7 +147,8 @@ Topic becomes part of the folder name — keep it short: `compression`, `api-des
 4. Ask: "Continuing from a previous session? If so, which one?"
 5. Determine next session number from `_index.json`.
 6. Create session folder: `<root>/<workspace>/session-<NNN>_<topic>/`
-7. Create `_meta.json` and empty `_summary.json` (see `references/schemas.md`).
+7. Get current time via `date -u +%Y-%m-%dT%H:%M:%SZ` — use this for `created_at` fields.
+   Create `_meta.json` and empty `_summary.json` (see `references/schemas.md`).
 8. Update `_index.json`.
 9. **If mini-repo:** `git add . && git commit -m "collab: new session <workspace>/<topic>" && git push origin main`
 10. Confirm:
@@ -243,7 +248,9 @@ conversation turns with minimal processing. Never modifies any existing block fi
 
 **Steps:**
 1. Read identity and transport config.
-2. Generate timestamp: ISO 8601 UTC compact — `20260314T142001Z`.
+2. Generate timestamp by running `date -u +%Y%m%dT%H%M%SZ` via Bash.
+   **NEVER guess or estimate the time — always use the system clock.**
+   Claude has no internal clock; any timestamp not from `date` is a hallucination.
    Collision guard: if `<name>_<timestamp>.md` already exists, append `_2`, `_3`.
 3. Dump raw conversation turns since last save (or full conversation if first save):
    - Write as markdown with YAML frontmatter — Claude's natural output format, no conversion
