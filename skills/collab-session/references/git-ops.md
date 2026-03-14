@@ -26,7 +26,13 @@ git checkout main
 
 ---
 
-## Before Any Read Operation (`/collab list`, `/collab join`, `/collab refresh`)
+## When to Pull
+
+**Pull ONLY on read operations:** `/collab join`, `/collab list`, `/collab catchup`,
+`/collab history`, `/collab refresh`, `/collab compress`.
+
+**NEVER pull on save.** Block files are uniquely named (`<name>_<timestamp>.md`) so there
+are never write conflicts. Pulling on save adds latency for no benefit.
 
 ```bash
 cd <root>
@@ -39,23 +45,27 @@ Report the result to the user:
 
 ---
 
-## After Any Write Operation (`/collab new`, `/collab save`, `/collab close`)
+## After Write Operations
 
-**For `/collab save` — commit only the new block + updated metadata:**
+**For `/collab save` — commit the new block + updated metadata (NO pull first):**
 ```bash
 cd <root>
-git add <workspace>/session-<NNN>_<topic>/<n>_<timestamp>.json
+git add <workspace>/session-<NNN>_<topic>/<n>_<timestamp>.md
 git add <workspace>/session-<NNN>_<topic>/_meta.json
-git commit -m "collab: <n> — <workspace>/<topic> [block <N>]"
+git commit -m "collab: <n> — <workspace>/<topic> block <N>"
 git push origin main
 ```
 
-Commit message format: `collab: <participant> — <workspace>/<topic> [block <N>]`
-Example: `collab: simon — skill-project/workspace-arch [block 3]`
+Commit message format: `collab: <participant> — <workspace>/<topic> block <N>`
+Example: `collab: simon — skill-project/workspace-arch block 3`
 
-**For `/collab compress` — commit the rewritten summary + updated metadata:**
+If `git push` fails due to remote changes (rare), pull and push again — block files
+never conflict, only `_meta.json` might need a trivial merge.
+
+**For `/collab compress` — pull first, then commit:**
 ```bash
 cd <root>
+git pull origin main
 git add <workspace>/session-<NNN>_<topic>/_summary.json
 git add <workspace>/session-<NNN>_<topic>/_meta.json
 git commit -m "collab: compress — <workspace>/<topic>"
@@ -80,22 +90,17 @@ git push origin main
 
 ---
 
-## Pull-Before-Save Race Condition
+## Push Failure on Save
 
-Mini-repo mode does a `git pull origin main` at the start of `/collab save`. This ensures
-any colleague blocks saved since the last pull are incorporated before extracting the current
-turn. Workflow:
+If `git push` fails because a colleague pushed since our last pull:
 
 ```
-1. git pull origin main
-2. If new blocks: surface them to the user ("Dan saved 1 block while you were working")
-3. Incorporate new block content into awareness
-4. Write new block file
-5. git add / commit / push
+1. git pull origin main        ← pull their changes
+2. Resolve _meta.json if needed (block files never conflict)
+3. git push origin main        ← retry push
 ```
 
-If `git pull` surfaces a conflict on `_meta.json` (rare — requires two people saving at
-almost exactly the same time):
+If `_meta.json` conflicts (rare — requires two saves at nearly the same instant):
 - Run `git checkout --theirs _meta.json` to take the remote version as base
 - Re-apply local changes (last_save_by, last_save_at, total_saves) on top
 - This is safe because block files never conflict — only metadata can
@@ -128,10 +133,10 @@ informed by the refresh summary.
 git log --oneline --all
 
 # See all block files for a session
-ls -lt <workspace>/session-<NNN>_<topic>/*.json
+ls -lt <workspace>/session-<NNN>_<topic>/*.md
 
 # See what a specific block contains
-cat <workspace>/session-<NNN>_<topic>/dan_20260314T143512Z.json
+cat <workspace>/session-<NNN>_<topic>/dan_20260314T143512Z.md
 ```
 
 ---

@@ -40,15 +40,15 @@ Read `references/git-ops.md` for the exact git commands used in mini-repo mode.
 │   │   ├── _meta.json
 │   │   ├── _summary.json
 │   │   ├── _final_summary.json
-│   │   ├── simon_20260314T140000Z.json
-│   │   └── dan_20260314T141200Z.json
+│   │   ├── simon_20260314T140000Z.md
+│   │   └── dan_20260314T141200Z.md
 │   │
 │   └── session-002_workspace-arch/      ← active session
 │       ├── _meta.json
 │       ├── _summary.json
-│       ├── simon_20260314T142001Z.json
-│       ├── dan_20260314T143512Z.json
-│       └── simon_20260314T150033Z.json
+│       ├── simon_20260314T142001Z.md
+│       ├── dan_20260314T143512Z.md
+│       └── simon_20260314T150033Z.md
 │
 └── risk-engine/
     └── session-001_compression/
@@ -58,7 +58,7 @@ Read `references/git-ops.md` for the exact git commands used in mini-repo mode.
 **Collab root is NEVER inside a project repo.** It lives on a shared drive or in its own
 standalone repo. This keeps it completely separate from project branches and PRs.
 
-**Block files (`<name>_<timestamp>.json`) are write-once.** Never modified after creation.
+**Block files (`<name>_<timestamp>.md`) are write-once.** Never modified after creation.
 Only `_summary.json` and `_meta.json` are ever updated.
 
 ---
@@ -70,7 +70,7 @@ Only `_summary.json` and `_meta.json` are ever updated.
 With no argument — show current identity:
 ```
 You are Simon.
-Blocks you save will be named simon_<timestamp>.json.
+Blocks you save will be named simon_<timestamp>.md.
 Change with: /collab whoami <new-name>
 ```
 
@@ -198,11 +198,11 @@ either layer. Use `/collab history` to dig into raw blocks behind the summary.
 **Steps:**
 1. Read identity and transport config.
 2. **If mini-repo:** `git pull origin main` — report how many new files were fetched:
-   > Pulled 2 new blocks (dan_20260314T143512Z.json, dan_20260314T151022Z.json).
+   > Pulled 2 new blocks (dan_20260314T143512Z.md, dan_20260314T151022Z.md).
 3. Resolve session folder from `_index.json`.
 4. If `status = "closed"`: warn and offer read-only load or suggest `/collab new`.
 5. Read `_meta.json` and `_summary.json`.
-6. Glob all `<name>_<timestamp>.json` files. Sort by timestamp ascending.
+6. Glob all `<name>_<timestamp>.md` files. Sort by timestamp ascending.
    Identify which are newer than `_summary.compressed_through_timestamp` — these are
    "recent verbatim" blocks. Older ones are already in the summary narrative.
 7. Build context: goal → summary → recent verbatim blocks in chronological order.
@@ -243,28 +243,31 @@ conversation turns with minimal processing. Never modifies any existing block fi
 
 **Steps:**
 1. Read identity and transport config.
-2. **If mini-repo:** `git pull origin main` first — surface any new colleague blocks:
-   > Dan saved 1 new block while you were working. It's included in the session context.
-   Then silently incorporate any new blocks into awareness before extracting the current turn.
-3. Generate timestamp: ISO 8601 UTC compact — `20260314T142001Z`.
-   Collision guard: if `<name>_<timestamp>.json` already exists, append `_2`, `_3`.
-4. Dump raw conversation turns since last save (or full conversation if first save):
-   - Include all human and claude turns as-is — preserve the full exchange
+2. Generate timestamp: ISO 8601 UTC compact — `20260314T142001Z`.
+   Collision guard: if `<name>_<timestamp>.md` already exists, append `_2`, `_3`.
+3. Dump raw conversation turns since last save (or full conversation if first save):
+   - Write as markdown with YAML frontmatter — Claude's natural output format, no conversion
+   - Use `## Human` and `## Claude` section headers for turns
+   - Include all turns as-is — preserve the full exchange
    - Do NOT summarise, compress, or rewrite turns — speed over polish
-   - Optionally tag decisions and open questions if they are obvious, but do not
-     slow down the save to extract them exhaustively. Empty arrays are fine.
-5. Write `<name>_<timestamp>.json` to session folder (see `references/schemas.md`).
-6. Update `_meta.json`: participants list, last_save_by, last_save_at, total_saves,
+   - Optionally add `## Decisions` and `## Open Questions` sections if obvious, but
+     these are optional — omit rather than slow down the save
+4. Write `<name>_<timestamp>.md` to session folder (see `references/schemas.md`).
+5. Update `_meta.json`: participants list, last_save_by, last_save_at, total_saves,
    open_question_count.
-7. **If mini-repo:**
+6. **If mini-repo:**
    ```
    git add <block-file> _meta.json
    git commit -m "collab: <name> — <workspace>/<topic> block <N>"
    git push origin main
    ```
    Report: > Pushed to main. Colleagues will see this on their next join or refresh.
+
+**No git pull on save.** Block files are uniquely named — there are never conflicts.
+Pulling adds latency for no benefit. Pull only on read operations (join, catchup,
+history, refresh, compress).
 8. Confirm:
-   > Saved: `simon_20260314T142001Z.json`
+   > Saved: `simon_20260314T142001Z.md`
    > Session: <N> total saves from <participants>.
 
    If total_saves >= 10:
@@ -387,14 +390,14 @@ run this when a file watcher or notification tells you someone just saved.
    Report new files found.
 3. **If mini-repo:** `git pull origin main`. Report new commits pulled.
 4. If new blocks found: summarise what changed:
-   > Dan added 1 block (dan_20260314T151022Z.json):
+   > Dan added 1 block (dan_20260314T151022Z.md):
    > — Decision: Auto-compression should be user-prompted, not automatic
    > — Open question: Should refresh be on a timer?
    > Type /collab join to fully reload context, or keep going with this summary.
 5. If nothing new: > No new saves since last check.
 
 **Tip for near-real-time:** run a folder/file watcher on the session folder and trigger
-`/collab refresh` when new `*.json` files appear. On drive, changes appear within seconds.
+`/collab refresh` when new `*.md` block files appear. On drive, changes appear within seconds.
 On mini-repo, after a colleague pushes, a periodic `git fetch` (e.g. every 60 seconds via
 a background script) can trigger the refresh.
 
@@ -511,8 +514,8 @@ step ensures the summary powering the brief is high quality.
 → pulls, assembles blocks, shows handoff brief
 
 # Both working — saves go to main continuously
-/collab save    ← Simon writes simon_...Z.json, pushes
-/collab save    ← Dan writes dan_...Z.json, pushes (no conflict)
+/collab save    ← Simon writes simon_...Z.md, pushes (no pull needed)
+/collab save    ← Dan writes dan_...Z.md, pushes (no conflict, unique filenames)
 
 # Simon gets notified Dan saved, checks what Dan said
 /collab catchup what did Dan say?

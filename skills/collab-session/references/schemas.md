@@ -1,7 +1,9 @@
 # Collab Session — File Schemas
 
-All files are JSON. Block files (`<n>_<timestamp>.json`) are **write-once** — never modified
-after creation. Only `_meta.json` and `_summary.json` are ever updated.
+Metadata and summaries are JSON. Block files (raw saves) are **markdown with YAML frontmatter**
+— markdown is Claude's natural output format, making saves near-instant with no conversion overhead.
+Block files are **write-once** — never modified after creation. Only `_summary.json` and
+`_meta.json` are ever updated.
 
 ---
 
@@ -140,50 +142,54 @@ treated as verbatim (no compression has happened yet).
 
 ---
 
-## `<name>_<timestamp>.json` — Block File (Write-Once)
+## `<name>_<timestamp>.md` — Block File (Write-Once, Markdown)
 
-**Path:** `<session-folder>/simon_20260314T142001Z.json`
-**Filename:** `<identity-name>_<YYYYMMDDTHHmmssZ>.json`
+**Path:** `<session-folder>/simon_20260314T142001Z.md`
+**Filename:** `<identity-name>_<YYYYMMDDTHHmmssZ>.md`
 **Collision guard:** append `_2`, `_3` if timestamp already exists for this user.
 
-Written once by `/collab save`. Never modified.
+Written once by `/collab save`. Never modified. Markdown with YAML frontmatter.
 
-```json
-{
-  "participant": "simon",
-  "timestamp": "2026-03-14T14:20:01Z",
-  "timestamp_compact": "20260314T142001Z",
-  "workspace": "skill-project",
-  "topic": "workspace-arch",
-  "session_number": 2,
-  "turns": [
-    {
-      "role": "human",
-      "content": "We don't want to continually push to GitHub do we? What about network drives?"
-    },
-    {
-      "role": "claude",
-      "content": "Network drives work identically to cloud sync for this skill — flat-file-per-save means no locking issues. Proposed two transport modes: drive (NAS/Dropbox) and mini-repo (dedicated git repo, auto-push to main, no branches)."
-    }
-  ],
-  "decisions": [
-    "Collab root lives outside project repos — on a shared drive or in a dedicated mini git repo",
-    "Mini-repo mode: auto-commit and push to main on every save, auto-pull on join",
-    "Drive mode: NAS or cloud sync folder, file watcher for near-real-time notifications"
-  ],
-  "open_questions": [
-    "Should /collab refresh be timer-based or purely manual?",
-    "Auto-compression: trigger automatically or user-prompted?"
-  ]
-}
+```markdown
+---
+participant: simon
+timestamp: "2026-03-14T14:20:01Z"
+timestamp_compact: "20260314T142001Z"
+workspace: skill-project
+topic: workspace-arch
+session_number: 2
+---
+
+## Human
+We don't want to continually push to GitHub do we? What about network drives?
+
+## Claude
+Network drives work identically to cloud sync for this skill — flat-file-per-save
+means no locking issues. Proposed two transport modes: drive (NAS/Dropbox) and
+mini-repo (dedicated git repo, auto-push to main, no branches).
+
+## Decisions
+- Collab root lives outside project repos — on a shared drive or in a dedicated mini git repo
+- Mini-repo mode: auto-commit and push to main on every save, auto-pull on join
+- Drive mode: NAS or cloud sync folder, file watcher for near-real-time notifications
+
+## Open Questions
+- Should /collab refresh be timer-based or purely manual?
+- Auto-compression: trigger automatically or user-prompted?
 ```
 
-**Turns field:** raw conversation turns dumped as-is for speed. Do not summarise or compress
-during save — preserve the full exchange. Compression happens later via `/collab compress`,
-which reads raw blocks and writes a tight narrative to `_summary.json`.
+**Why markdown?** Markdown is Claude's natural output format — no conversion overhead, no
+escaping, no JSON structure to build. Saves are near-instant. The YAML frontmatter provides
+structured metadata that can be parsed programmatically when needed.
 
-**Decisions and open_questions:** tag these if obvious during save, but empty arrays are
-acceptable. The `/collab compress` step extracts and consolidates these exhaustively.
+**Conversation turns:** dump as `## Human` and `## Claude` sections. Include all turns
+as-is — do not summarise or compress during save. Compression happens later via
+`/collab compress`, which reads raw blocks and writes a tight narrative to `_summary.json`.
+
+**Decisions and Open Questions:** tag these as `## Decisions` and `## Open Questions`
+sections with bullet lists. Include if obvious during save, but these sections are
+optional — empty or omitted is fine. The `/collab compress` step extracts and consolidates
+these exhaustively.
 
 ---
 
