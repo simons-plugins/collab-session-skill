@@ -211,26 +211,27 @@ either layer. Use `/collab history` to dig into raw blocks behind the summary.
    Identify which are newer than `_summary.compressed_through_timestamp` — these are
    "recent verbatim" blocks. Older ones are already in the summary narrative.
 7. Build context: goal → summary → recent verbatim blocks in chronological order.
-8. Present **handoff brief** — narrative, never a raw dump:
+8. Present **handoff brief** — the journey, not just conclusions:
 
 ```
 ## skill-project / workspace-arch  (session-002)
 **Goal:** Redesign collab to use flat files per save, eliminating merge conflicts.
 
-**Story so far:**
-Simon and Claude explored the conflict problem with shared JSON and agreed to switch to one
-file per save per user, assembled on join. Dan joined and proposed storing identity once per
-machine rather than re-asking each save. Both agreed the collab root should live outside any
-project repo — on a network drive or in a dedicated mini git repo.
+**How we got here:**
+Started with shared JSON but hit concurrent write conflicts immediately. File locking
+was tried but unreliable on NAS. Simon proposed write-once files with unique names —
+this makes conflicts structurally impossible. Dan joined and pointed out identity should
+be per-machine to avoid re-asking on every save. Both agreed collab root must live
+outside project repos.
 
-**Decisions made:**
-- Each save writes a new uniquely-named file; existing files never touched
-- Identity stored in ~/.claude/collab-identity.json, set once with /collab whoami
-- Collab root is never inside a project repo
+**Dead ends:** Shared mutable JSON (conflicts). File locking on NAS (unreliable).
 
-**Open questions:**
-- Auto-compression: trigger automatically or user-prompted?
-- Should /collab refresh be timed or manual?
+**What exists now:** Skill spec with both transport modes (drive + mini-repo).
+Identity config designed. Commands: save/join/refresh/compress.
+
+**Decisions:** [consolidated list from summary]
+
+**Open questions:** [consolidated list from summary]
 
 **Contributors:** Simon (2 saves) · Dan (1 save)
 **Last save:** Dan · 3 min ago
@@ -297,11 +298,44 @@ Deliberately compress raw blocks into a tight narrative summary. This is the **q
 4. Read `_summary.json` to find `compressed_through_timestamp`.
 5. Glob all block files newer than that timestamp (or all blocks if no prior compression).
 6. Read each uncompressed block in chronological order.
-7. Synthesise a tight narrative summary covering all blocks — including any already in
-   `_summary.json`. The result replaces the existing summary, not appends.
-   - Extract and consolidate **decisions** across all blocks
-   - Extract and consolidate **open questions** — remove any that have been resolved
-   - Compress filler, preserve reasoning and key exchanges
+7. Build a **journey-style summary** from all blocks (including any already in `_summary.json`).
+   The result replaces the existing summary, not appends. Write it as a teammate would want
+   to read it — not a Wikipedia article about the final state, but the story of how we got here.
+
+   **Structure the summary with these sections:**
+
+   **Starting point** — the problem/goal and initial assumptions (1-2 sentences).
+
+   **Phases of work** — chronological, showing how understanding evolved. Each phase is a
+   paragraph covering: what was attempted, what was discovered, what changed as a result.
+   Name the phases by what happened, not by timestamp (e.g. "CSO integration", not "Block 5").
+   Show the *progression* — "we started thinking X, then discovered Y, which led us to Z".
+
+   **Dead ends & pivots** — what was tried and abandoned, and *why*. These are gold for
+   teammates — they prevent someone from re-exploring a path that was already ruled out.
+   (e.g. "POOPy was tried for Thames Water data but required GDAL/conda — hit the API directly
+   instead" or "Flow looked promising as a universal predictor but turned out site-specific —
+   only Teddington shows a clear relationship").
+
+   **Key discoveries** — the "aha moments" that changed direction or significantly deepened
+   understanding. Not just facts, but *surprises* — things that contradicted expectations or
+   revealed something non-obvious. (e.g. "We were searching through a 15km keyhole — expanding
+   to full catchments revealed 50+ monitors we'd been missing").
+
+   **Current state** — what concretely exists now: scripts, datasets, models, documents.
+   What has been validated, what are the numbers. This is the "if you need to pick up the
+   code, here's what's there" section.
+
+   **Then extract into structured fields in `_summary.json`:**
+   - `decisions` array — consolidated, deduplicated, each as a clear statement
+   - `open_questions` array — unresolved items, remove any answered in later blocks
+
+   **Quality bar:** A teammate reading this summary should be able to:
+   1. Understand *why* we're where we are, not just *what* we concluded
+   2. Avoid re-exploring dead ends
+   3. Know what artifacts exist and where
+   4. Pick up any open thread and continue productively
+   5. Understand the confidence level of conclusions (validated vs hypothesised)
 8. Rewrite `_summary.json` with the new narrative and update `compressed_through_timestamp`
    to the latest block's timestamp.
 9. Update `_meta.json`: `open_question_count`.
@@ -312,9 +346,11 @@ Deliberately compress raw blocks into a tight narrative summary. This is the **q
     git push origin main
     ```
 11. Confirm:
-    > Compressed <N> blocks into summary.
-    > Decisions: <consolidated list>
-    > Open questions: <consolidated list>
+    > Compressed <N> blocks into journey summary.
+    > Phases: <number of phases identified>
+    > Dead ends: <count of approaches tried and abandoned>
+    > Decisions: <consolidated count>
+    > Open questions: <consolidated count>
     > Raw blocks preserved — summary used for faster `/collab join`.
 
 ---

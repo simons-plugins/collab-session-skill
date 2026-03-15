@@ -130,12 +130,38 @@ Updated on every `/collab save` and `/collab close`. Never holds turn content.
 Rewritten during compression (user-confirmed, never automatic mid-save).
 Represents all blocks up to `compressed_through_timestamp`.
 
+The summary is a **journey-style narrative** — not a final-state report. It tells the story
+of how understanding evolved, what was tried and abandoned, what surprised us, and what
+concretely exists now. A teammate should be able to read it and pick up any thread.
+
 ```json
 {
-  "summary": "Simon and Claude explored the conflict problem with shared JSON and agreed to switch to one file per save per user, assembled on join. Simon proposed a dedicated mini git repo as an alternative to shared drives — auto-push to main on save, auto-pull on join, no branches or PRs. Both options documented. Dan joined and suggested storing user identity once per machine.",
-  "compressed_through_timestamp": "20260314T143512Z"
+  "summary": "**Starting point:** We set out to eliminate merge conflicts in shared brainstorming sessions.\n\n**Phase 1 — Shared JSON (abandoned):** Started with a single shared session.json file. Immediately hit concurrent write conflicts when two people saved near-simultaneously. Tried file locking but it was fragile across NAS mounts.\n\n**Phase 2 — Flat file per save:** Simon proposed write-once block files with unique names (<user>_<timestamp>.md). This eliminates conflicts entirely — two simultaneous saves just create two files. Tested with network drive and confirmed no issues.\n\n**Phase 3 — Transport layer:** Simon proposed adding git as an alternative to shared drives. Dan joined and pointed out that identity should be per-machine, not per-save — avoids re-asking every time. Both agreed the collab folder must live outside project repos.\n\n**Dead ends:** File locking on NAS (unreliable across SMB/NFS). Shared mutable JSON (concurrent writes). Storing identity in the session folder (gets out of sync).\n\n**Key discoveries:** Write-once files make conflicts structurally impossible, not just unlikely. Git works as a pure transport (no branches, no PRs) when the data model is conflict-free.\n\n**Current state:** Skill spec written with both transport modes (drive + mini-repo). Identity stored in ~/.claude/collab-identity.json. Save/join/refresh/compress commands designed. No implementation yet — spec only.",
+  "compressed_through_timestamp": "20260314T143512Z",
+  "decisions": [
+    "Flat-file-per-save: each save is a new uniquely-named file, never modified",
+    "Two transports: drive (NAS/Dropbox) and mini-repo (dedicated git repo, push to main)",
+    "Identity stored in ~/.claude/collab-identity.json, set with /collab whoami",
+    "Collab root is never inside a project repo"
+  ],
+  "open_questions": [
+    "Auto-compression: trigger automatically or user-prompted?",
+    "Should /collab refresh be timer-based or purely manual?"
+  ]
 }
 ```
+
+**Summary structure:** The `summary` field follows this pattern:
+- **Starting point** — problem/goal and initial assumptions
+- **Phases of work** — chronological, showing evolution of understanding
+- **Dead ends & pivots** — what was tried and abandoned, and why
+- **Key discoveries** — surprises and aha moments that changed direction
+- **Current state** — what artifacts exist, what's been validated
+
+**Structured fields:** `decisions` and `open_questions` are extracted as arrays for
+programmatic access (e.g. by `/collab catchup` and `/collab join`). They are consolidated
+and deduplicated across all blocks. Open questions that were resolved in later blocks are
+removed.
 
 When `summary` is empty and `compressed_through_timestamp` is null, all block files are
 treated as verbatim (no compression has happened yet).
