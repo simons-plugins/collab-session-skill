@@ -174,12 +174,13 @@ Front door for the team. Shows what's active and who last touched it.
 
 ### skill-project
   ● 002  workspace-arch      "Redesign with flat-file blocks"
-         Simon · Dan  ·  3 saves  ·  14 min ago  ·  2 open questions
+         Simon (8) · Brian (2) · Dan (3)  ·  13 saves  ·  14 min ago
+         ⚠ 2 items blocked on brian
   ○ 001  initial-design      [closed]
 
 ### risk-engine
   ● 001  compression         "Summarise without losing signal"
-         Dan  ·  1 save  ·  2h ago  ·  1 open question
+         Dan (5)  ·  5 saves  ·  2h ago  ·  1 open question
 ```
 
 5. > Join: `/collab join <workspace> <topic-or-number>`
@@ -219,12 +220,20 @@ either layer. Use `/collab history` to dig into raw blocks behind the summary.
 ## skill-project / workspace-arch  (session-002)
 **Goal:** Redesign collab to use flat files per save, eliminating merge conflicts.
 
+**Contributors:**
+- Simon (8 blocks, 14-15 Mar): data analysis, model building
+- Brian (2 blocks, 15 Mar): site knowledge, data validation
+- Dan (3 blocks, 14-16 Mar): architecture review, system design
+
 **How we got here:**
 Started with shared JSON but hit concurrent write conflicts immediately. File locking
-was tried but unreliable on NAS. Simon proposed write-once files with unique names —
-this makes conflicts structurally impossible. Dan joined and pointed out identity should
+was tried but unreliable on NAS. **Simon** proposed write-once files with unique names —
+this makes conflicts structurally impossible. **Dan** joined and pointed out identity should
 be per-machine to avoid re-asking on every save. Both agreed collab root must live
 outside project repos.
+
+**Blocked items:**
+- EA stationIds for 4 sites — **waiting on brian** (raised by simon, Phase 2)
 
 **Dead ends:** Shared mutable JSON (conflicts). File locking on NAS (unreliable).
 
@@ -233,11 +242,16 @@ Identity config designed. Commands: save/join/refresh/compress.
 
 **Decisions:** [consolidated list from summary]
 
-**Open questions:** [consolidated list from summary]
+**Open questions:**
+- Build real-time alert script? — **owner: simon** (raised by simon, Phase 9)
+- Should AMBER be split into AMBER-HIGH and AMBER-LOW? (raised by dan, Phase 8)
 
-**Contributors:** Simon (2 saves) · Dan (1 save)
 **Last save:** Dan · 3 min ago
 ```
+
+   The handoff brief highlights items blocked on specific people, so a joiner immediately
+   sees if anything is waiting on them. The Contributors section includes domain expertise
+   so joiners know who to ask about what.
 
 9. Ask: "Ready to pick up? Anything to add before we dive in?"
 10. Continue brainstorm naturally. Remind them to `/collab save` before handing off.
@@ -262,6 +276,11 @@ conversation turns with minimal processing. Never modifies any existing block fi
    - Do NOT summarise, compress, or rewrite turns — speed over polish
    - Optionally add `## Decisions` and `## Open Questions` sections if obvious, but
      these are optional — omit rather than slow down the save
+   - For open questions, use simple text conventions that compress will parse:
+     `EA stationIds for 4 sites — NEED BRIAN` (blocked on someone),
+     `Build alert script? — owner: simon` (has an owner),
+     `Should AMBER be split?` (no owner/blocker yet).
+     Keep it simple — structure is extracted during compress, not during save.
 4. **Collect conversation artifacts** — files created or modified during this conversation
    that are relevant to the session (scripts, data files, configs, documents). Detect these
    by reviewing tool calls in the conversation (Write, Edit, Bash output mentioning file
@@ -330,8 +349,14 @@ Deliberately compress raw blocks into a tight narrative summary. This is the **q
 7. Build a **journey-style summary** from all blocks (including any already in `_summary.md`).
    The result replaces the existing summary, not appends. Write it as a teammate would want
    to read it — not a Wikipedia article about the final state, but the story of how we got here.
+   See `references/schemas.md` for the full format with attribution examples.
 
    **Structure the summary with these sections:**
+
+   **Contributors** (before Starting point): For each participant, list their name,
+   block count, date range, key contributions (2-3 phrases), and primary domain expertise.
+   This is the "who to ask about what" index. Order by contribution volume. Always include,
+   even for solo sessions — establishes the pattern from day one.
 
    **Starting point** — the problem/goal and initial assumptions (1-2 sentences).
 
@@ -339,6 +364,19 @@ Deliberately compress raw blocks into a tight narrative summary. This is the **q
    paragraph covering: what was attempted, what was discovered, what changed as a result.
    Name the phases by what happened, not by timestamp (e.g. "CSO integration", not "Block 5").
    Show the *progression* — "we started thinking X, then discovered Y, which led us to Z".
+   Phase headings include date range and contributor count:
+   `## Phase 3 — CSO integration (14-15 Mar, 2 contributors)`.
+
+   **Attribution in phases**: Each phase paragraph leads with the contributor's name in bold,
+   their date range and block count. When multiple people contributed to a phase, give each
+   their own paragraph within the phase. End each phase with a "Key finding" or "Phase outcome"
+   line that synthesises across contributors.
+
+   **Disagreement preservation**: When contributors proposed different approaches, briefly
+   capture both positions and explain why one was chosen. This goes in the relevant phase,
+   not as a separate section. E.g. "Dan proposed using ML (Random Forest), Simon argued
+   simple thresholds were more interpretable for scout leaders. Went with thresholds —
+   validated at 94% accuracy."
 
    **Dead ends & pivots** — what was tried and abandoned, and *why*. These are gold for
    teammates — they prevent someone from re-exploring a path that was already ruled out.
@@ -348,16 +386,23 @@ Deliberately compress raw blocks into a tight narrative summary. This is the **q
 
    **Key discoveries** — the "aha moments" that changed direction or significantly deepened
    understanding. Not just facts, but *surprises* — things that contradicted expectations or
-   revealed something non-obvious. (e.g. "We were searching through a 15km keyhole — expanding
-   to full catchments revealed 50+ monitors we'd been missing").
+   revealed something non-obvious.
 
    **Current state** — what concretely exists now: scripts, datasets, models, documents.
-   What has been validated, what are the numbers. This is the "if you need to pick up the
-   code, here's what's there" section.
+   What has been validated, what are the numbers.
 
-   **Then extract into structured fields in `_summary.md`:**
-   - `decisions` array — consolidated, deduplicated, each as a clear statement
-   - `open_questions` array — unresolved items, remove any answered in later blocks
+   **Decisions**: Extract and consolidate across all blocks. For contested or multi-contributor
+   decisions, add parenthetical attribution: `(proposed: name, validated: name)` or
+   `(proposed: name after name flagged X)`. For uncontested single-contributor decisions,
+   optionally add just `(name)`. Consensus decisions with no clear proposer need no attribution.
+
+   **Open questions**: Extract and consolidate — remove any that have been resolved. Each
+   question should include `— **blocked on name**` or `— **owner: name**` where applicable,
+   plus `(raised by name, Phase N)` for traceability. Parse block-file conventions like
+   `NEED BRIAN` and `owner: simon` into structured format.
+
+   Also write structured `open_questions` to `_meta.json` as objects with `question`,
+   `owner`, `blocked_on`, `raised_by`, and `phase` fields (see `references/schemas.md`).
 
    **Quality bar:** A teammate reading this summary should be able to:
    1. Understand *why* we're where we are, not just *what* we concluded
@@ -365,6 +410,7 @@ Deliberately compress raw blocks into a tight narrative summary. This is the **q
    3. Know what artifacts exist and where
    4. Pick up any open thread and continue productively
    5. Understand the confidence level of conclusions (validated vs hypothesised)
+   6. Know who contributed what and who to ask about specific topics
 8. Rewrite `_summary.md` with the new narrative and update `compressed_through_timestamp`
    to the latest block's timestamp.
 9. Update `_meta.json`: `open_question_count`.
@@ -394,6 +440,9 @@ check what colleagues have contributed, or to query specific topics.
 - `/collab catchup what did Dan say about the API?`
 - `/collab catchup any decisions on the data model?`
 - `/collab catchup summarise Brian's blocks`
+- `/collab catchup what has brian contributed?` — reads blocks by participant, summarises their contributions
+- `/collab catchup what's blocked on me?` — reads `_meta.json` open_questions, filters by `blocked_on` matching current identity
+- `/collab catchup what needs simon?` — filters open_questions by `blocked_on` or `owner` for named person
 
 **Steps:**
 1. Read identity and transport config.
@@ -402,6 +451,9 @@ check what colleagues have contributed, or to query specific topics.
 4. Read `_summary.md` and glob all block files newer than `compressed_through_timestamp`.
 5. If a question was provided, search across the summary and recent blocks to answer it
    specifically. Filter by participant name if asked about a specific person.
+   - For "what has X contributed?" queries: filter blocks by participant, summarise their contributions across all phases.
+   - For "what's blocked on me/X?" queries: read `_meta.json` `open_questions`, filter by `blocked_on` matching the named person (or current identity for "me"). Also scan recent blocks for `NEED <NAME>` patterns.
+   - For "what needs X?" queries: filter `open_questions` by both `blocked_on` and `owner` for the named person.
 6. If no question, provide a quick status:
    > **Since your last save:**
    > Dan saved 2 blocks (14:35, 15:10):

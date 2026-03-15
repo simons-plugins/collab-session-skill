@@ -101,6 +101,15 @@ Lightweight metadata only. Readable at a glance. Updated by `/collab new` and `/
 **Path:** `<session-folder>/_meta.json`
 Updated on every `/collab save` and `/collab close`. Never holds turn content.
 
+**`open_questions` field:** array of structured objects with `question` (required),
+`owner` (optional — who's working on it), `blocked_on` (optional — who it's waiting on),
+`raised_by` (optional — who raised it), `phase` (optional — which phase it relates to).
+`open_question_count` stays as a convenience integer.
+
+**Migration:** old sessions may have `open_questions` as a string array. Compress rewrites
+them as objects on next run. Code consuming `open_questions` should handle both formats
+(check if first element is string or object).
+
 ```json
 {
   "workspace": "skill-project",
@@ -120,8 +129,16 @@ Updated on every `/collab save` and `/collab close`. Never holds turn content.
   "total_saves": 3,
   "open_question_count": 2,
   "open_questions": [
-    "Auto-compression: trigger automatically or user-prompted?",
-    "Should /collab refresh be timer-based or purely manual?"
+    {
+      "question": "Auto-compression: trigger automatically or user-prompted?",
+      "raised_by": "simon",
+      "phase": 1
+    },
+    {
+      "question": "Should /collab refresh be timer-based or purely manual?",
+      "raised_by": "simon",
+      "phase": 1
+    }
   ]
 }
 ```
@@ -150,27 +167,40 @@ questions are rendered as proper markdown sections so they display well in GitHu
 compressed_through_timestamp: "20260314T143512Z"
 ---
 
+## Contributors
+
+- **Simon** (8 blocks, 14-15 Mar): Built correlation engine, CSO integration,
+  upstream catchment expansion, exec summary. Domain: data analysis, API integration.
+- **Brian** (2 blocks, 15 Mar): EA station ID confirmation, site-specific local
+  knowledge. Domain: site geography, water testing.
+- **Dan** (3 blocks, 14-16 Mar): Architecture review, suggested tributary flow
+  approach. Domain: system design.
+
 ## Starting point
 
 We set out to eliminate merge conflicts in shared brainstorming sessions.
 
-## Phase 1 — Shared JSON (abandoned)
+## Phase 1 — Shared JSON (abandoned) (14 Mar, 1 contributor)
 
-Started with a single shared session.json file. Immediately hit concurrent write conflicts
-when two people saved near-simultaneously. Tried file locking but it was fragile across
-NAS mounts.
+**Simon** (14 Mar, 1 block): Started with a single shared session.json file. Immediately
+hit concurrent write conflicts when two people saved near-simultaneously. Tried file
+locking but it was fragile across NAS mounts.
 
-## Phase 2 — Flat file per save
+## Phase 2 — Flat file per save (14 Mar, 1 contributor)
 
-Simon proposed write-once block files with unique names (<user>_<timestamp>.md). This
-eliminates conflicts entirely — two simultaneous saves just create two files. Tested with
-network drive and confirmed no issues.
+**Simon** (14 Mar, 2 blocks): Proposed write-once block files with unique names
+(<user>_<timestamp>.md). This eliminates conflicts entirely — two simultaneous saves
+just create two files. Tested with network drive and confirmed no issues.
 
-## Phase 3 — Transport layer
+## Phase 3 — Transport layer (14-15 Mar, 2 contributors)
 
-Simon proposed adding git as an alternative to shared drives. Dan joined and pointed out
-that identity should be per-machine, not per-save — avoids re-asking every time. Both
-agreed the collab folder must live outside project repos.
+**Simon** (14 Mar, 1 block): Proposed adding git as an alternative to shared drives.
+
+**Dan** (15 Mar, 1 block): Pointed out that identity should be per-machine, not per-save
+— avoids re-asking every time. Both agreed the collab folder must live outside project repos.
+
+**Key finding:** Git works as a pure transport (no branches, no PRs) when the data model
+is conflict-free.
 
 ## Dead ends & pivots
 
@@ -191,24 +221,26 @@ implementation yet — spec only.
 
 ## Decisions
 
-- Flat-file-per-save: each save is a new uniquely-named file, never modified
-- Two transports: drive (NAS/Dropbox) and mini-repo (dedicated git repo, push to main)
-- Identity stored in ~/.claude/collab-identity.json, set with /collab whoami
+- Flat-file-per-save: each save is a new uniquely-named file, never modified (simon)
+- Two transports: drive (NAS/Dropbox) and mini-repo (proposed: simon, validated: dan)
+- Identity stored in ~/.claude/collab-identity.json, set with /collab whoami (proposed: dan)
 - Collab root is never inside a project repo
 
 ## Open questions
 
-- Auto-compression: trigger automatically or user-prompted?
-- Should /collab refresh be timer-based or purely manual?
+- Auto-compression: trigger automatically or user-prompted? (raised by simon, Phase 2)
+- Should /collab refresh be timer-based or purely manual? (raised by simon, Phase 3)
 ```
 
 **Structure:**
 - **YAML frontmatter** — only `compressed_through_timestamp` (true metadata, not content)
-- **Narrative body** — journey-style headings: Starting point, Phase N, Dead ends, Key
-  discoveries, Current state
-- **Decisions** — consolidated bullet list as a `## Decisions` section
-- **Open questions** — unresolved items as a `## Open questions` section (resolved ones
-  removed during compress)
+- **Contributors** — per-person block counts, date ranges, key contributions, domain expertise
+- **Narrative body** — journey-style headings: Starting point, Phase N (with attribution),
+  Dead ends, Key discoveries, Current state
+- **Decisions** — consolidated bullet list as a `## Decisions` section (with attribution
+  for contested decisions)
+- **Open questions** — unresolved items as a `## Open questions` section (with blocked_on/
+  owner/raised_by attribution; resolved ones removed during compress)
 
 Decisions and open questions are in the markdown body (not frontmatter) so they render
 properly on GitHub. The same lists are also kept in `_meta.json` for programmatic access
@@ -221,6 +253,13 @@ verbatim (no compression has happened yet).
 treat identically — the `summary` field maps to the markdown body, structured fields
 map to the corresponding sections. On next compress, write `_summary.md`. The old
 JSON file can be left in place (harmless) or deleted.
+
+**Attribution rules** (applied in the example above):
+- **Contributors section** (before first phase): name, block count, date range, key contributions (2-3 phrases), domain expertise. Order by contribution volume. Always present, even for solo sessions.
+- **Phase paragraphs**: lead with contributor name in bold, date and block count. Multiple contributors get separate paragraphs within the phase. End each phase with "Key finding" or "Phase outcome" line.
+- **Phase headings**: include date range and contributor count: `## Phase 3 — CSO integration (14-15 Mar, 2 contributors)`.
+- **Decisions**: contested/multi-contributor decisions get `(proposed: name, validated: name)`. Single-contributor uncontested decisions optionally get `(name)`. Consensus decisions need no attribution.
+- **Open questions**: include `— **blocked on name**` or `— **owner: name**` where applicable, plus `(raised by name, Phase N)` for traceability.
 
 ---
 
@@ -262,6 +301,8 @@ mini-repo (dedicated git repo, auto-push to main, no branches).
 ## Open Questions
 - Should /collab refresh be timer-based or purely manual?
 - Auto-compression: trigger automatically or user-prompted?
+- EA stationIds for 4 sites — NEED BRIAN
+- Build alert script? — owner: simon
 ```
 
 **Why markdown?** Markdown is Claude's natural output format — no conversion overhead, no
@@ -282,6 +323,14 @@ conversation. Each entry has a path and one-line description.
 - **Mini-repo mode:** paths are relative to `_files/` in the session folder — actual files
   are copied there on save. Colleagues get them on join/pull.
 - **Drive mode:** paths are local filesystem paths — clickable references, no copy needed.
+
+**Open questions attribution convention:** when writing open questions in block files, use
+simple text conventions that compress will parse into structured objects:
+- `EA stationIds for 4 sites — NEED BRIAN` (blocked on someone)
+- `Build alert script? — owner: simon` (has an owner)
+- `Should AMBER be split?` (no owner/blocker yet)
+
+Keep it simple text — structure is extracted during `/collab compress`, not during save.
 
 ---
 
