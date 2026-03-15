@@ -124,47 +124,92 @@ Updated on every `/collab save` and `/collab close`. Never holds turn content.
 
 ---
 
-## `_summary.json` — Rolling Compressed Narrative
+## `_summary.md` — Rolling Compressed Narrative
 
-**Path:** `<session-folder>/_summary.json`
+**Path:** `<session-folder>/_summary.md`
 Rewritten during compression (user-confirmed, never automatic mid-save).
-Represents all blocks up to `compressed_through_timestamp`.
+Represents all blocks up to the `compressed_through_timestamp` in its frontmatter.
 
-The summary is a **journey-style narrative** — not a final-state report. It tells the story
-of how understanding evolved, what was tried and abandoned, what surprised us, and what
-concretely exists now. A teammate should be able to read it and pick up any thread.
+The summary is a **journey-style narrative** in markdown — human-readable when browsing
+the repo, and machine-parseable via YAML frontmatter for structured fields. This replaces
+the old `_summary.json` format where the narrative was an unreadable escaped `\n` string.
 
-```json
-{
-  "summary": "**Starting point:** We set out to eliminate merge conflicts in shared brainstorming sessions.\n\n**Phase 1 — Shared JSON (abandoned):** Started with a single shared session.json file. Immediately hit concurrent write conflicts when two people saved near-simultaneously. Tried file locking but it was fragile across NAS mounts.\n\n**Phase 2 — Flat file per save:** Simon proposed write-once block files with unique names (<user>_<timestamp>.md). This eliminates conflicts entirely — two simultaneous saves just create two files. Tested with network drive and confirmed no issues.\n\n**Phase 3 — Transport layer:** Simon proposed adding git as an alternative to shared drives. Dan joined and pointed out that identity should be per-machine, not per-save — avoids re-asking every time. Both agreed the collab folder must live outside project repos.\n\n**Dead ends:** File locking on NAS (unreliable across SMB/NFS). Shared mutable JSON (concurrent writes). Storing identity in the session folder (gets out of sync).\n\n**Key discoveries:** Write-once files make conflicts structurally impossible, not just unlikely. Git works as a pure transport (no branches, no PRs) when the data model is conflict-free.\n\n**Current state:** Skill spec written with both transport modes (drive + mini-repo). Identity stored in ~/.claude/collab-identity.json. Save/join/refresh/compress commands designed. No implementation yet — spec only.",
-  "compressed_through_timestamp": "20260314T143512Z",
-  "decisions": [
-    "Flat-file-per-save: each save is a new uniquely-named file, never modified",
-    "Two transports: drive (NAS/Dropbox) and mini-repo (dedicated git repo, push to main)",
-    "Identity stored in ~/.claude/collab-identity.json, set with /collab whoami",
-    "Collab root is never inside a project repo"
-  ],
-  "open_questions": [
-    "Auto-compression: trigger automatically or user-prompted?",
-    "Should /collab refresh be timer-based or purely manual?"
-  ]
-}
+```markdown
+---
+compressed_through_timestamp: "20260314T143512Z"
+decisions:
+  - "Flat-file-per-save: each save is a new uniquely-named file, never modified"
+  - "Two transports: drive (NAS/Dropbox) and mini-repo (dedicated git repo, push to main)"
+  - "Identity stored in ~/.claude/collab-identity.json, set with /collab whoami"
+  - "Collab root is never inside a project repo"
+open_questions:
+  - "Auto-compression: trigger automatically or user-prompted?"
+  - "Should /collab refresh be timer-based or purely manual?"
+---
+
+## Starting point
+
+We set out to eliminate merge conflicts in shared brainstorming sessions.
+
+## Phase 1 — Shared JSON (abandoned)
+
+Started with a single shared session.json file. Immediately hit concurrent write conflicts
+when two people saved near-simultaneously. Tried file locking but it was fragile across
+NAS mounts.
+
+## Phase 2 — Flat file per save
+
+Simon proposed write-once block files with unique names (<user>_<timestamp>.md). This
+eliminates conflicts entirely — two simultaneous saves just create two files. Tested with
+network drive and confirmed no issues.
+
+## Phase 3 — Transport layer
+
+Simon proposed adding git as an alternative to shared drives. Dan joined and pointed out
+that identity should be per-machine, not per-save — avoids re-asking every time. Both
+agreed the collab folder must live outside project repos.
+
+## Dead ends & pivots
+
+- File locking on NAS (unreliable across SMB/NFS)
+- Shared mutable JSON (concurrent writes)
+- Storing identity in the session folder (gets out of sync)
+
+## Key discoveries
+
+- Write-once files make conflicts structurally impossible, not just unlikely
+- Git works as a pure transport (no branches, no PRs) when the data model is conflict-free
+
+## Current state
+
+Skill spec written with both transport modes (drive + mini-repo). Identity stored in
+~/.claude/collab-identity.json. Save/join/refresh/compress commands designed. No
+implementation yet — spec only.
 ```
 
-**Summary structure:** The `summary` field follows this pattern:
+**Narrative body** follows this structure using markdown headings:
 - **Starting point** — problem/goal and initial assumptions
-- **Phases of work** — chronological, showing evolution of understanding
+- **Phase N — <name>** — chronological phases showing evolution of understanding
 - **Dead ends & pivots** — what was tried and abandoned, and why
 - **Key discoveries** — surprises and aha moments that changed direction
 - **Current state** — what artifacts exist, what's been validated
 
-**Structured fields:** `decisions` and `open_questions` are extracted as arrays for
-programmatic access (e.g. by `/collab catchup` and `/collab join`). They are consolidated
-and deduplicated across all blocks. Open questions that were resolved in later blocks are
-removed.
+**YAML frontmatter** holds structured fields for programmatic access:
+- `compressed_through_timestamp` — latest block's timestamp
+- `decisions` — consolidated, deduplicated list
+- `open_questions` — unresolved items (resolved ones removed)
 
-When `summary` is empty and `compressed_through_timestamp` is null, all block files are
-treated as verbatim (no compression has happened yet).
+These fields are used by `/collab catchup` and `/collab join` for quick extraction
+without parsing the full narrative.
+
+When the file is empty (no frontmatter, no body), all block files are treated as
+verbatim (no compression has happened yet).
+
+**Migration:** If a session has `_summary.json` from before this change, read it
+and treat identically — the JSON `summary` field maps to the markdown body, and
+`compressed_through_timestamp`/`decisions`/`open_questions` map to frontmatter fields.
+On next compress, write the new `_summary.md` format. The old `_summary.json` can be
+left in place (harmless) or deleted.
 
 ---
 
@@ -199,6 +244,10 @@ mini-repo (dedicated git repo, auto-push to main, no branches).
 - Mini-repo mode: auto-commit and push to main on every save, auto-pull on join
 - Drive mode: NAS or cloud sync folder, file watcher for near-real-time notifications
 
+## Files
+- `_files/skill-project/design-spec.md` — skill specification document (mini-repo: actual file)
+- `workspace/local/path/to/notes.md` — working notes (drive: local path reference)
+
 ## Open Questions
 - Should /collab refresh be timer-based or purely manual?
 - Auto-compression: trigger automatically or user-prompted?
@@ -216,6 +265,12 @@ as-is — do not summarise or compress during save. Compression happens later vi
 sections with bullet lists. Include if obvious during save, but these sections are
 optional — empty or omitted is fine. The `/collab compress` step extracts and consolidates
 these exhaustively.
+
+**Files:** tag as `## Files` with bullet list of files created or modified during the
+conversation. Each entry has a path and one-line description.
+- **Mini-repo mode:** paths are relative to `_files/` in the session folder — actual files
+  are copied there on save. Colleagues get them on join/pull.
+- **Drive mode:** paths are local filesystem paths — clickable references, no copy needed.
 
 ---
 
