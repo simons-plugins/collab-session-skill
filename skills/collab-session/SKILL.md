@@ -42,14 +42,16 @@ from the system clock is a hallucination and will be wrong.
 ├── skill-project/
 │   ├── session-001_initial-design/      ← closed session
 │   │   ├── _meta.json
-│   │   ├── _summary.json
-│   │   ├── _final_summary.json
+│   │   ├── _summary.md
+│   │   ├── _final_summary.md
 │   │   ├── simon_20260314T140000Z.md
 │   │   └── dan_20260314T141200Z.md
 │   │
 │   └── session-002_workspace-arch/      ← active session
 │       ├── _meta.json
-│       ├── _summary.json
+│       ├── _summary.md
+│       ├── _files/                     ← conversation artifacts (mini-repo only)
+│       │   └── src/model.py            ← preserves relative paths from working dir
 │       ├── simon_20260314T142001Z.md
 │       ├── dan_20260314T143512Z.md
 │       └── simon_20260314T150033Z.md
@@ -63,7 +65,7 @@ from the system clock is a hallucination and will be wrong.
 standalone repo. This keeps it completely separate from project branches and PRs.
 
 **Block files (`<name>_<timestamp>.md`) are write-once.** Never modified after creation.
-Only `_summary.json` and `_meta.json` are ever updated.
+Only `_summary.md` and `_meta.json` are ever updated.
 
 ---
 
@@ -148,7 +150,7 @@ Topic becomes part of the folder name — keep it short: `compression`, `api-des
 5. Determine next session number from `_index.json`.
 6. Create session folder: `<root>/<workspace>/session-<NNN>_<topic>/`
 7. Get current time via `date -u +%Y-%m-%dT%H:%M:%SZ` — use this for `created_at` fields.
-   Create `_meta.json` and empty `_summary.json` (see `references/schemas.md`).
+   Create `_meta.json` and empty `_summary.md` (see `references/schemas.md`).
 8. Update `_index.json`.
 9. **If mini-repo:** `git add . && git commit -m "collab: new session <workspace>/<topic>" && git push origin main`
 10. Confirm:
@@ -191,7 +193,7 @@ Load a session as a new participant or resume your own.
 This is the primary entry point for picking up a colleague's thread.
 
 Join loads two layers of history:
-1. **Summary** (`_summary.json`) — compressed narrative of all blocks up to the last
+1. **Summary** (`_summary.md`) — compressed narrative of all blocks up to the last
    `/collab compress` checkpoint. This is the "story so far" in tight form.
 2. **Raw blocks since** — all block files newer than the summary's
    `compressed_through_timestamp`, loaded verbatim in chronological order.
@@ -206,31 +208,32 @@ either layer. Use `/collab history` to dig into raw blocks behind the summary.
    > Pulled 2 new blocks (dan_20260314T143512Z.md, dan_20260314T151022Z.md).
 3. Resolve session folder from `_index.json`.
 4. If `status = "closed"`: warn and offer read-only load or suggest `/collab new`.
-5. Read `_meta.json` and `_summary.json`.
+5. Read `_meta.json` and `_summary.md`.
 6. Glob all `<name>_<timestamp>.md` files. Sort by timestamp ascending.
    Identify which are newer than `_summary.compressed_through_timestamp` — these are
    "recent verbatim" blocks. Older ones are already in the summary narrative.
 7. Build context: goal → summary → recent verbatim blocks in chronological order.
-8. Present **handoff brief** — narrative, never a raw dump:
+8. Present **handoff brief** — the journey, not just conclusions:
 
 ```
 ## skill-project / workspace-arch  (session-002)
 **Goal:** Redesign collab to use flat files per save, eliminating merge conflicts.
 
-**Story so far:**
-Simon and Claude explored the conflict problem with shared JSON and agreed to switch to one
-file per save per user, assembled on join. Dan joined and proposed storing identity once per
-machine rather than re-asking each save. Both agreed the collab root should live outside any
-project repo — on a network drive or in a dedicated mini git repo.
+**How we got here:**
+Started with shared JSON but hit concurrent write conflicts immediately. File locking
+was tried but unreliable on NAS. Simon proposed write-once files with unique names —
+this makes conflicts structurally impossible. Dan joined and pointed out identity should
+be per-machine to avoid re-asking on every save. Both agreed collab root must live
+outside project repos.
 
-**Decisions made:**
-- Each save writes a new uniquely-named file; existing files never touched
-- Identity stored in ~/.claude/collab-identity.json, set once with /collab whoami
-- Collab root is never inside a project repo
+**Dead ends:** Shared mutable JSON (conflicts). File locking on NAS (unreliable).
 
-**Open questions:**
-- Auto-compression: trigger automatically or user-prompted?
-- Should /collab refresh be timed or manual?
+**What exists now:** Skill spec with both transport modes (drive + mini-repo).
+Identity config designed. Commands: save/join/refresh/compress.
+
+**Decisions:** [consolidated list from summary]
+
+**Open questions:** [consolidated list from summary]
 
 **Contributors:** Simon (2 saves) · Dan (1 save)
 **Last save:** Dan · 3 min ago
@@ -259,16 +262,43 @@ conversation turns with minimal processing. Never modifies any existing block fi
    - Do NOT summarise, compress, or rewrite turns — speed over polish
    - Optionally add `## Decisions` and `## Open Questions` sections if obvious, but
      these are optional — omit rather than slow down the save
-4. Write `<name>_<timestamp>.md` to session folder (see `references/schemas.md`).
-5. Update `_meta.json`: participants list, last_save_by, last_save_at, total_saves,
+4. **Collect conversation artifacts** — files created or modified during this conversation
+   that are relevant to the session (scripts, data files, configs, documents). Detect these
+   by reviewing tool calls in the conversation (Write, Edit, Bash output mentioning file
+   creation). List them with sizes.
+
+   **If mini-repo mode:**
+   - Show the file list and ask: "Include these files in the session? (colleagues will get
+     them on join)" — let the user confirm, deselect, or skip.
+   - Copy confirmed files into `<session-folder>/_files/` preserving relative paths from the
+     working directory. E.g. `thameswatch-analysis/model_v3.py` →
+     `_files/thameswatch-analysis/model_v3.py`.
+   - **Size guardrails:** warn if any file >1MB, skip files >10MB with a note (user can
+     override with explicit confirmation). Skip binary files unless explicitly requested.
+   - Add a `## Files` section to the block listing each included file with a one-line
+     description of what it is and why it matters.
+
+   **If drive mode:**
+   - Add a `## Files` section to the block with **local paths** (clickable file links) and
+     one-line descriptions. Don't copy — drive users share filesystem access.
+   - Example:
+     ```
+     ## Files
+     - `thameswatch-analysis/traffic_light_model_v3.py` — site-specific prediction model
+     - `thameswatch-analysis/walton_flow.csv` — 597 days EA flow data for station 3100TH
+     ```
+
+5. Write `<name>_<timestamp>.md` to session folder (see `references/schemas.md`).
+6. Update `_meta.json`: participants list, last_save_by, last_save_at, total_saves,
    open_question_count.
-6. **If mini-repo:**
+7. **If mini-repo:**
    ```
-   git add <block-file> _meta.json
+   git add <block-file> _meta.json _files/
    git commit -m "collab: <name> — <workspace>/<topic> block <N>"
    git push origin main
    ```
    Report: > Pushed to main. Colleagues will see this on their next join or refresh.
+   If files were included: > Included <N> files in `_files/` (<total size>).
 
 **No git pull on save.** Block files are uniquely named — there are never conflicts.
 Pulling adds latency for no benefit. Pull only on read operations (join, catchup,
@@ -294,27 +324,62 @@ Deliberately compress raw blocks into a tight narrative summary. This is the **q
 1. Read identity and transport config.
 2. **If mini-repo:** `git pull origin main` first.
 3. Resolve the active session (or accept `<workspace> <topic>` arguments).
-4. Read `_summary.json` to find `compressed_through_timestamp`.
+4. Read `_summary.md` to find `compressed_through_timestamp`.
 5. Glob all block files newer than that timestamp (or all blocks if no prior compression).
 6. Read each uncompressed block in chronological order.
-7. Synthesise a tight narrative summary covering all blocks — including any already in
-   `_summary.json`. The result replaces the existing summary, not appends.
-   - Extract and consolidate **decisions** across all blocks
-   - Extract and consolidate **open questions** — remove any that have been resolved
-   - Compress filler, preserve reasoning and key exchanges
-8. Rewrite `_summary.json` with the new narrative and update `compressed_through_timestamp`
+7. Build a **journey-style summary** from all blocks (including any already in `_summary.md`).
+   The result replaces the existing summary, not appends. Write it as a teammate would want
+   to read it — not a Wikipedia article about the final state, but the story of how we got here.
+
+   **Structure the summary with these sections:**
+
+   **Starting point** — the problem/goal and initial assumptions (1-2 sentences).
+
+   **Phases of work** — chronological, showing how understanding evolved. Each phase is a
+   paragraph covering: what was attempted, what was discovered, what changed as a result.
+   Name the phases by what happened, not by timestamp (e.g. "CSO integration", not "Block 5").
+   Show the *progression* — "we started thinking X, then discovered Y, which led us to Z".
+
+   **Dead ends & pivots** — what was tried and abandoned, and *why*. These are gold for
+   teammates — they prevent someone from re-exploring a path that was already ruled out.
+   (e.g. "POOPy was tried for Thames Water data but required GDAL/conda — hit the API directly
+   instead" or "Flow looked promising as a universal predictor but turned out site-specific —
+   only Teddington shows a clear relationship").
+
+   **Key discoveries** — the "aha moments" that changed direction or significantly deepened
+   understanding. Not just facts, but *surprises* — things that contradicted expectations or
+   revealed something non-obvious. (e.g. "We were searching through a 15km keyhole — expanding
+   to full catchments revealed 50+ monitors we'd been missing").
+
+   **Current state** — what concretely exists now: scripts, datasets, models, documents.
+   What has been validated, what are the numbers. This is the "if you need to pick up the
+   code, here's what's there" section.
+
+   **Then extract into structured fields in `_summary.md`:**
+   - `decisions` array — consolidated, deduplicated, each as a clear statement
+   - `open_questions` array — unresolved items, remove any answered in later blocks
+
+   **Quality bar:** A teammate reading this summary should be able to:
+   1. Understand *why* we're where we are, not just *what* we concluded
+   2. Avoid re-exploring dead ends
+   3. Know what artifacts exist and where
+   4. Pick up any open thread and continue productively
+   5. Understand the confidence level of conclusions (validated vs hypothesised)
+8. Rewrite `_summary.md` with the new narrative and update `compressed_through_timestamp`
    to the latest block's timestamp.
 9. Update `_meta.json`: `open_question_count`.
 10. **If mini-repo:**
     ```
-    git add <session-folder>/_summary.json <session-folder>/_meta.json
+    git add <session-folder>/_summary.md <session-folder>/_meta.json
     git commit -m "collab: compress — <workspace>/<topic>"
     git push origin main
     ```
 11. Confirm:
-    > Compressed <N> blocks into summary.
-    > Decisions: <consolidated list>
-    > Open questions: <consolidated list>
+    > Compressed <N> blocks into journey summary.
+    > Phases: <number of phases identified>
+    > Dead ends: <count of approaches tried and abandoned>
+    > Decisions: <consolidated count>
+    > Open questions: <consolidated count>
     > Raw blocks preserved — summary used for faster `/collab join`.
 
 ---
@@ -334,7 +399,7 @@ check what colleagues have contributed, or to query specific topics.
 1. Read identity and transport config.
 2. **If mini-repo:** `git pull origin main` silently.
 3. Resolve the active session.
-4. Read `_summary.json` and glob all block files newer than `compressed_through_timestamp`.
+4. Read `_summary.md` and glob all block files newer than `compressed_through_timestamp`.
 5. If a question was provided, search across the summary and recent blocks to answer it
    specifically. Filter by participant name if asked about a specific person.
 6. If no question, provide a quick status:
@@ -417,7 +482,7 @@ Finalise the session. Freeze it as a permanent reference.
 **Steps:**
 1. Offer a final `/collab save` first.
 2. **If mini-repo:** `git pull origin main` to ensure nothing is missed.
-3. Write `_final_summary.json` to the session folder — complete narrative: what was explored,
+3. Write `_final_summary.md` to the session folder — complete narrative: what was explored,
    decided, left open, what the next session should know. Best possible briefing for the future.
 4. Update `_meta.json`: `status: "closed"`, `closed_at`, `closed_by`.
 5. Update `_index.json`: mark session closed.
@@ -461,7 +526,7 @@ speed and losslessness over polish. Compression is a separate deliberate step vi
 This separation means saves are near-instant and no nuance is lost to over-eager extraction.
 
 **Compression is a checkpoint, not a deletion.** When `/collab compress` runs, it writes a
-narrative summary to `_summary.json` — but the raw block files are always preserved.
+narrative summary to `_summary.md` — but the raw block files are always preserved.
 The summary is an acceleration layer for `/collab join`, not a replacement. Anyone can
 browse the original raw blocks via `/collab history` at any time.
 
@@ -534,7 +599,7 @@ step ensures the summary powering the brief is high quality.
 
 # After several saves, compress to create a checkpoint
 /collab compress
-→ reads all raw blocks, writes tight narrative to _summary.json
+→ reads all raw blocks, writes tight narrative to _summary.md
 → future /collab join starts from this summary + any blocks after it
 
 # Later, someone needs detail from before the compress
@@ -546,5 +611,5 @@ step ensures the summary powering the brief is high quality.
 → fast brief from summary, then raw blocks since compress
 
 # Topic done
-/collab close   ← writes _final_summary.json, pushes, marks closed
+/collab close   ← writes _final_summary.md, pushes, marks closed
 ```
