@@ -66,7 +66,7 @@ never conflict, only `_meta.json` might need a trivial merge.
 ```bash
 cd <root>
 git pull origin main
-git add <workspace>/session-<NNN>_<topic>/_summary.json
+git add <workspace>/session-<NNN>_<topic>/_summary.md
 git add <workspace>/session-<NNN>_<topic>/_meta.json
 git commit -m "collab: compress — <workspace>/<topic>"
 git push origin main
@@ -81,7 +81,7 @@ git push origin main
 
 **For `/collab close`:**
 ```bash
-git add <workspace>/session-<NNN>_<topic>/_final_summary.json
+git add <workspace>/session-<NNN>_<topic>/_final_summary.md
 git add <workspace>/session-<NNN>_<topic>/_meta.json
 git add _index.json
 git commit -m "collab: close — <workspace>/<topic>"
