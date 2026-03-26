@@ -68,6 +68,7 @@ claude plugin add AI-Collab-Skill/collab-session-skill
 | `/collab history [range]` | Browse raw blocks behind the summary |
 | `/collab refresh` | Pull latest saves without full reload |
 | `/collab close` | Finalise session with closing summary |
+| `/collab publish [workspace] [topic]` | Post summary to GitHub Discussions |
 
 ## Transport options
 
