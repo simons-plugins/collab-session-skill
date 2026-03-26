@@ -30,7 +30,8 @@ Per-machine. Never in the shared folder or repo.
 ```json
 {
   "mode": "drive",
-  "root": "/Volumes/TeamNAS/collab"
+  "root": "/Volumes/TeamNAS/collab",
+  "publish_repo": "org/repo"
 }
 ```
 
@@ -128,6 +129,8 @@ them as objects on next run. Code consuming `open_questions` should handle both 
   "last_save_at": "2026-03-14T14:35:12Z",
   "total_saves": 3,
   "open_question_count": 2,
+  "published_url": null,
+  "published_discussion_id": null,
   "open_questions": [
     {
       "question": "Auto-compression: trigger automatically or user-prompted?",
@@ -149,6 +152,10 @@ every `/collab save` (from the block's `## Open Questions` section) and `/collab
 `_meta.json` to see session status AND outstanding questions without reading the full summary.
 
 `open_question_count` is kept for backwards compatibility and quick display in `/collab list`.
+
+**`published_url`** and **`published_discussion_id`** are set by `/collab publish`. When
+present, re-publishing updates the existing Discussion instead of creating a new one.
+`published_discussion_id` is the GitHub GraphQL node ID (e.g. `D_kwDO...`).
 
 ---
 
