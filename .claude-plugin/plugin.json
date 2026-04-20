@@ -1,6 +1,6 @@
 {
   "name": "collab-session",
-  "version": "1.8.2",
+  "version": "1.8.3",
   "description": "Async collaborative brainstorming between multiple human+Claude pairs — shared workspaces with write-once block files, no merge conflicts",
   "repository": "https://github.com/AI-Collab-Skill/collab-session-skill"
 }
