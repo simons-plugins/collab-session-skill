@@ -4,7 +4,13 @@ Durable rules for working in this repo. Read before every change.
 
 ## Version bump — mandatory
 
-**Every change that gets pushed must bump `.claude-plugin/plugin.json` `version`.** No exceptions — docs, hooks, schemas, refactors, everything. The `check-update.js` hook notifies users when a newer version is published, so every shipped commit needs a new number or users won't be told to pull it.
+**Every change that gets pushed must bump the version in BOTH:**
+- `.claude-plugin/plugin.json` `version`
+- `.claude-plugin/marketplace.json` `plugins[0].version`
+
+Both files must hold the same value. The `check-version` CI workflow blocks merges when they disagree or when the version hasn't been bumped relative to `main` — do not try to merge a PR without bumping both.
+
+No exceptions — docs, hooks, schemas, refactors, everything. The `check-update.js` hook notifies users when a newer version is published, so every shipped commit needs a new number or users won't be told to pull it.
 
 Semver:
 - **Patch** (`1.8.0 → 1.8.1`) — docs, internal refactors, bug fixes, wording, schema clarifications that don't change file formats.
