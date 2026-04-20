@@ -104,12 +104,14 @@ Updated on every `/collab save` and `/collab close`. Never holds turn content.
 
 **`open_questions` field:** array of structured objects with `question` (required),
 `owner` (optional — who's working on it), `blocked_on` (optional — who it's waiting on),
-`raised_by` (optional — who raised it), `phase` (optional — which phase it relates to).
+`raised_by` (optional — who raised it), `phase` (optional — which phase it relates to),
+`impact` (optional — `"high"`, `"medium"`, or `"low"`; defaults to `"medium"` if omitted).
 `open_question_count` stays as a convenience integer.
 
-**Migration:** old sessions may have `open_questions` as a string array. Compress rewrites
-them as objects on next run. Code consuming `open_questions` should handle both formats
-(check if first element is string or object).
+**Migration:** old sessions may have `open_questions` as a string array or as objects
+without `impact`. Compress rewrites them as full objects on next run. Code consuming
+`open_questions` should handle both formats (check if first element is string or object)
+and default `impact` to `"medium"` when missing.
 
 ```json
 {
@@ -133,14 +135,23 @@ them as objects on next run. Code consuming `open_questions` should handle both 
   "published_discussion_id": null,
   "open_questions": [
     {
+      "question": "EA stationIds for 4 sites",
+      "blocked_on": "brian",
+      "raised_by": "simon",
+      "phase": 2,
+      "impact": "high"
+    },
+    {
       "question": "Auto-compression: trigger automatically or user-prompted?",
       "raised_by": "simon",
-      "phase": 1
+      "phase": 1,
+      "impact": "medium"
     },
     {
       "question": "Should /collab refresh be timer-based or purely manual?",
       "raised_by": "simon",
-      "phase": 1
+      "phase": 1,
+      "impact": "low"
     }
   ]
 }
@@ -333,11 +344,30 @@ conversation. Each entry has a path and one-line description.
 
 **Open questions attribution convention:** when writing open questions in block files, use
 simple text conventions that compress will parse into structured objects:
-- `EA stationIds for 4 sites — NEED BRIAN` (blocked on someone)
-- `Build alert script? — owner: simon` (has an owner)
-- `Should AMBER be split?` (no owner/blocker yet)
+- `EA stationIds for 4 sites — NEED BRIAN !high` (blocked on someone, high impact)
+- `Build alert script? — owner: simon` (has an owner, default medium impact)
+- `Should AMBER be split? !low` (no owner/blocker, low impact)
 
-Keep it simple text — structure is extracted during `/collab compress`, not during save.
+Urgency markers: `!high`, `!medium`, `!low` at the end of the line. Default is `medium`
+when omitted. Structure is extracted during `/collab compress`, not during save.
+
+**Private content convention:** participants can wrap sensitive content in
+`<private>...</private>` fences anywhere in their messages or files. On `/collab save`,
+the skill replaces each fenced region with `[redacted by participant]` in the block file
+and strips the fence. The original content is never written to disk. This is the
+"I shared a secret mid-brainstorm" guard. When in doubt, redact and tell the user.
+
+```
+## Human
+The API key is <private>sk-abc123...</private> — but we don't need it in the session.
+```
+
+becomes:
+
+```
+## Human
+The API key is [redacted by participant] — but we don't need it in the session.
+```
 
 ---
 
@@ -391,3 +421,84 @@ results, and conclusions.]
 
 - Auto-compression threshold: is 5 blocks the right trigger?
 ```
+
+---
+
+## Cross-Session Wikilinks
+
+`_summary.md` and `_final_summary.md` may contain wikilink references to prior sessions:
+
+- `[[session-NNN]]` — whole session
+- `[[session-NNN#phase-N]]` — a specific phase within a session
+- `[[_patterns]]` — the workspace-level patterns file
+
+These render as plain markdown on GitHub (which doesn't resolve them automatically) but
+`/collab join` resolves them by reading the target file and inlining a one-paragraph
+preview next to the link. This is how lineage between sessions is made visible without
+forcing the joiner to pre-load history.
+
+Rules:
+- Use sparingly — one or two links per session is typical. Every phase linked = noise.
+- Only link when the current work explicitly reverses, refines, or extends the prior one,
+  or when `/collab reflect` has identified a pattern that applies here.
+- Wikilinks are written by `/collab compress` (informed by the prior session's
+  `_final_summary.md`) and preserved verbatim by `/collab close` into `_final_summary.md`.
+
+---
+
+## `_patterns.md` — Workspace-Level Cross-Session Patterns
+
+**Path:** `<collab-root>/<workspace>/_patterns.md`
+Written and rewritten by `/collab reflect <workspace>`. Read by `/collab join` when a
+session summary references `[[_patterns]]`.
+
+A pattern is only written to this file if it appears in **2+ closed sessions** — the
+quality gate that keeps `_patterns.md` trustworthy.
+
+```markdown
+---
+workspace: skill-project
+compiled_at: "2026-04-20T15:00:00Z"
+sessions_reviewed: 4
+---
+
+# Patterns — skill-project
+
+## Recurring themes
+
+### Concurrency in shared state
+Appeared in [[session-002#phase-1]], [[session-003#phase-2]], [[session-004#phase-1]].
+First hit in session-002 with shared JSON → locking → write-once files. Session-003
+re-hit it with `_meta.json` rewrites → mitigated with atomic temp-rename. Session-004
+avoided the problem entirely by making `_meta.json` the only mutable file.
+
+## Repeated dead ends
+
+- **File locking on NAS** — tried in session-002 (simon) and session-004 (dan);
+  unreliable across SMB/NFS in both. Don't try again.
+
+## Chronic blockers
+
+- **EA station IDs for 4 sites — blocked on brian** — raised in session-002 and still
+  open in session-004. Consider escalating.
+
+## Validated patterns
+
+- **Write-once block files** — validated in session-002 and session-004. Structural
+  guarantee of no conflicts.
+
+## Cross-contributor insights
+
+- Both Dan (session-002) and Simon (session-004) independently concluded that git should
+  be pure transport with no branches when the data model is conflict-free.
+```
+
+**Sections:**
+- `## Recurring themes` — topics that came up in 2+ sessions
+- `## Repeated dead ends` — approaches tried and abandoned in 2+ sessions
+- `## Chronic blockers` — open questions with the same `blocked_on` across sessions
+- `## Validated patterns` — approaches that worked in 2+ sessions (promote to templates)
+- `## Cross-contributor insights` — same conclusion reached independently by different people
+
+Each entry links to source sessions via `[[session-NNN#phase-N]]` so readers can trace
+the evidence.
