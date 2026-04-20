@@ -15,7 +15,7 @@ Simon + Claude                         Dan + Claude
      │                                      │
      │                    /collab join ──────┤
      │                    ← git pull         │
-     │                    ← assembles brief  │
+     │                    ← handoff brief    │   (resolves [[wikilinks]] inline)
      │                                      │
      │                        /collab save ──┤
      │                        → dan_...Z.md  │
@@ -23,7 +23,14 @@ Simon + Claude                         Dan + Claude
      │                                      │
      ├─ /collab refresh                     │
      │  ← sees Dan's new block              │
+     │                                      │
+     ├─ /collab compress                    │   journey-style _summary.md
+     │                                      │
+     ├─ /collab reflect skill-project       │   cross-session _patterns.md
+     │                                      │   (only after 2+ closed sessions)
 ```
+
+On launch, a SessionStart hook nudges each participant about active sessions they've touched — no more "which session was I in?" at the start of the day.
 
 ## Install
 
@@ -47,10 +54,21 @@ claude plugin add AI-Collab-Skill/collab-session-skill
 
 # 4. Brainstorm with Claude, then save
 /collab save
+# Secrets in the chat? Wrap them in <private>...</private> — redacted on save.
 
 # 5. Colleague joins from their machine
 /collab join my-project api-design
-# Gets a narrative handoff brief, picks up where you left off
+# Gets a narrative handoff brief, picks up where you left off.
+
+# 6. After several saves, compress into a journey summary
+/collab compress
+
+# 7. Topic done — freeze the session
+/collab close
+
+# 8. After 2+ closed sessions, extract recurring patterns
+/collab reflect my-project
+# Writes _patterns.md: recurring themes, repeated dead ends, chronic blockers.
 ```
 
 ## Commands
@@ -96,18 +114,30 @@ Chosen once at `/collab init`:
 <collab-root>/                     ← shared folder or git repo
 ├── _index.json                    ← workspace registry
 └── my-project/
-    └── session-001_api-design/
-        ├── _meta.json             ← session metadata (mutable)
-        ├── _summary.json          ← compressed narrative (updated by /compress)
-        ├── simon_20260314T142001Z.md   ← block file (write-once)
-        └── dan_20260314T143512Z.md     ← block file (write-once)
+    ├── _patterns.md               ← cross-session patterns (/collab reflect)
+    │
+    ├── session-001_api-design/    ← closed session
+    │   ├── _meta.json             ← session metadata (mutable)
+    │   ├── _summary.md            ← journey narrative (updated by /compress)
+    │   ├── _final_summary.md      ← definitive record (written by /close)
+    │   ├── _files/                ← conversation artifacts (mini-repo only)
+    │   ├── simon_20260314T142001Z.md   ← block file (write-once, markdown)
+    │   └── dan_20260314T143512Z.md     ← block file (write-once, markdown)
+    │
+    └── session-002_workspace-arch/ ← active session
+        └── ...
 ```
 
-**Block files are markdown** with YAML frontmatter — Claude's natural output format. Raw conversation turns dumped as-is for speed. No JSON wrapping, no conversion overhead.
+**Block files are markdown** with YAML frontmatter — Claude's natural output format. Raw conversation turns dumped as-is for speed. No JSON wrapping, no conversion overhead. The only mutable files are `_meta.json`, `_summary.md`, and `_patterns.md`.
 
-**Save fast, compress later.** `/collab save` dumps raw turns instantly. `/collab compress` is a separate quality pass that reads all blocks and writes a tight narrative to `_summary.json`.
+**Save fast, compress later.** `/collab save` dumps raw turns instantly. `/collab compress` is a separate quality pass that reads all blocks and writes a journey-style narrative to `_summary.md` — with contributor attribution, phase progression, dead ends, and cross-session `[[wikilinks]]` to prior art.
 
-**Two layers of history.** `/collab join` loads the compressed summary (everything before the last compress checkpoint) plus raw blocks since. Fast brief for newcomers, full fidelity on recent work.
+**Three layers of history.**
+1. **Workspace patterns** (`_patterns.md`) — recurring themes across 2+ closed sessions, surfaced on demand.
+2. **Session summary** (`_summary.md`) — compressed narrative of everything up to the last compress checkpoint.
+3. **Raw blocks** since the checkpoint — full fidelity for recent work.
+
+`/collab join` loads layers 2 and 3 into a handoff brief. `/collab catchup` queries all three interactively using tiered retrieval (compact index → timeline → full block) to keep token cost bounded.
 
 ## Design principles
 
