@@ -1,6 +1,6 @@
 # Collab Session
 
-Async collaborative brainstorming between multiple human+Claude pairs. Each participant works in their own Claude Code session, saving progress to a shared workspace. No merge conflicts by design.
+Async collaborative thinking between multiple human+Claude pairs. Each participant works in their own Claude Code session, saving progress to a shared workspace. No merge conflicts by design — and the journey is preserved, not just the conclusion.
 
 ## How it works
 
@@ -31,6 +31,27 @@ Simon + Claude                         Dan + Claude
 ```
 
 On launch, a SessionStart hook nudges each participant about active sessions they've touched — no more "which session was I in?" at the start of the day.
+
+## What this is good for
+
+Not just coding. Any topic two or more people want to think through together, asynchronously, with Claude as a partner in each seat.
+
+**Research and analysis**
+- Two researchers reviewing papers on a topic, each with Claude pulling threads
+- Market or competitor analysis where each person covers a segment
+- Literature review split across a team, assembled into one journey summary
+
+**Design and decision-making (pre-code)**
+- Co-designing an API, schema, or system architecture before anyone writes code
+- Writing an RFC or design doc where each reviewer's reasoning is preserved, not just their verdict
+- Weighing product direction or pricing options with the trade-offs captured
+
+**Coding work where the *why* matters**
+- Architecture choices where future teammates need to know what was rejected and why
+- Bug investigations where the dead ends are as valuable as the fix
+- Refactoring decisions — the discussion that led to the final diff, preserved next to it
+
+**What sets it apart for coding:** a finished branch tells you what two colleagues agreed on. Collab Session captures *why* — the decisions, the disagreements, the approaches tried and abandoned. `/collab compress` writes a journey-style narrative with contributor attribution; `/collab reflect` surfaces patterns across closed sessions. Six months later, the next person on the codebase can read the lineage, not just the commit.
 
 ## Install
 
