@@ -64,9 +64,10 @@ claude plugin add AI-Collab-Skill/collab-session-skill
 | `/collab join <workspace> <topic>` | Load a session with narrative handoff brief |
 | `/collab save` | Save progress as a new block file |
 | `/collab compress` | Compress raw blocks into a tight summary |
-| `/collab catchup [question]` | Check what colleagues added (read-only) |
+| `/collab catchup [question]` | Tiered read-only search over recent activity |
 | `/collab history [range]` | Browse raw blocks behind the summary |
 | `/collab refresh` | Pull latest saves without full reload |
+| `/collab reflect <workspace>` | Extract cross-session patterns into `_patterns.md` |
 | `/collab close` | Finalise session with closing summary |
 | `/collab publish [workspace] [topic]` | Post summary to GitHub Discussions |
 
@@ -115,25 +116,61 @@ Chosen once at `/collab init`:
 - **No pull on save** — block files are uniquely named so there are never conflicts. Pulling adds latency for no benefit.
 - **Compression is a checkpoint, not a deletion** — raw blocks are always preserved. The summary is an acceleration layer.
 - **Collab root is infrastructure, not code** — it lives outside project repos, in its own dedicated space.
+- **Tiered retrieval** — `/collab catchup` starts with a compact index of recent blocks and only loads full content on demand. Keeps token cost bounded on long sessions.
+- **Cross-session wikilinks** — summaries reference prior sessions with `[[session-NNN#phase-N]]` so lineage is visible without reloading history. `/collab reflect` aggregates patterns across 2+ closed sessions into `_patterns.md`.
+
+## Privacy and safety
+
+Participants can wrap sensitive content in `<private>...</private>` fences in any message or file. On `/collab save`, the skill replaces each fenced region with `[redacted by participant]` in the block file — the original never hits disk. Use this for secrets shared mid-brainstorm.
+
+Open questions support impact levels — `!high`, `!medium`, `!low` — so `/collab list` and the join handoff brief can flag high-impact blockers prominently.
+
+## Auto-resume on launch
+
+A SessionStart hook surfaces any active collab sessions you've participated in (last 7 days). No auto-pull, no auto-write — just a nudge:
+
+```
+Active collab sessions you've participated in:
+  • skill-project / workspace-arch — last saved 3h ago by dan · 2 open
+Resume with `/collab join <workspace> <topic>` or list with `/collab list`.
+```
+
+A matching SessionEnd hook reminds you to `/collab save` if you have an active session you haven't contributed to in the last 2 hours.
 
 ## Plugin structure
 
 ```
 collab-session-skill/
 ├── .claude-plugin/
-│   ├── plugin.json           ← version, name, description
-│   └── marketplace.json      ← marketplace metadata
+│   ├── plugin.json                ← version, name, description
+│   └── marketplace.json           ← marketplace metadata
 ├── commands/
-│   └── collab.md             ← /collab command definition
+│   └── collab.md                  ← /collab command entry point
 ├── hooks/
-│   ├── hooks.json            ← SessionStart hook registration
-│   └── check-update.js       ← version check on launch
+│   ├── hooks.json                 ← hook registration
+│   ├── check-update.js            ← version check on launch
+│   ├── active-session-check.js    ← auto-resume nudge on launch
+│   └── save-nudge.js              ← save reminder on session end
 └── skills/
     └── collab-session/
-        ├── SKILL.md           ← full skill specification
+        ├── SKILL.md                ← skill overview, design principles, command index
         └── references/
-            ├── schemas.md     ← file format definitions
-            └── git-ops.md     ← exact git commands for mini-repo mode
+            ├── schemas.md          ← file format definitions
+            ├── git-ops.md          ← exact git commands for mini-repo mode
+            └── commands/           ← per-subcommand step-by-step flows
+                ├── whoami.md
+                ├── init.md
+                ├── new.md
+                ├── list.md
+                ├── join.md
+                ├── save.md
+                ├── compress.md
+                ├── catchup.md
+                ├── history.md
+                ├── refresh.md
+                ├── reflect.md
+                ├── close.md
+                └── publish.md
 ```
 
 ## License

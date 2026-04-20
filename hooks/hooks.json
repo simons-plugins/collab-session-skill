@@ -8,6 +8,22 @@
             "type": "command",
             "command": "node '${CLAUDE_PLUGIN_ROOT}/hooks/check-update.js'",
             "async": false
+          },
+          {
+            "type": "command",
+            "command": "node '${CLAUDE_PLUGIN_ROOT}/hooks/active-session-check.js'",
+            "async": false
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node '${CLAUDE_PLUGIN_ROOT}/hooks/save-nudge.js'",
+            "async": false
           }
         ]
       }
