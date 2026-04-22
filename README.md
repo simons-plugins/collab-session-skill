@@ -32,6 +32,10 @@ Simon + Claude                         Dan + Claude
 
 On launch, a SessionStart hook nudges each participant about active sessions they've touched — no more "which session was I in?" at the start of the day.
 
+## Why no vector DB, no RAG
+
+Cross-session recall is done via markdown primitives, not embeddings: `[[session-NNN#phase-N]]` wikilinks between summaries for graph navigation, `/collab reflect` to extract patterns from closed sessions into `_patterns.md`, and tiered retrieval in `/collab catchup` (compact index → timeline → full block) for bounded token cost. No vector DB, no index to rebuild, no model lock-in. If you'd rather run embeddings yourself, the folder is plain markdown — point any RAG tool at it.
+
 ## What this is good for
 
 Not just coding. Any topic two or more people want to think through together, asynchronously, with Claude as a partner in each seat.
@@ -159,6 +163,10 @@ Chosen once at `/collab init`:
 3. **Raw blocks** since the checkpoint — full fidelity for recent work.
 
 `/collab join` loads layers 2 and 3 into a handoff brief. `/collab catchup` queries all three interactively using tiered retrieval (compact index → timeline → full block) to keep token cost bounded.
+
+## Bring your own Obsidian
+
+The collab root is a folder of markdown with YAML frontmatter. Summaries use `[[session-NNN#phase-N]]` wikilinks, so pointing Obsidian, Logseq, or Foam at the folder gives you graph view and backlinks out of the box. `grep` works too. Two vaults if you run both transports (drive + mini-repo); Obsidian handles multi-vault natively.
 
 ## Design principles
 
